@@ -94,20 +94,7 @@ def create_db_and_tables():
         c.execute("INSERT INTO users (id, password, fullname, departemen, seksi, role, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
                   ("S123", hashed_dev_pw, "Supervisor", "Foundry Csm", "Finishing 2W", "Supervisor", "approved"))
 
-    # Create or alter projects table to add new columns and created_at
-    c.execute("PRAGMA table_info(projects)")
-    columns = [col[1] for col in c.fetchall()]
-    if 'created_at' not in columns:
-        c.execute("ALTER TABLE projects ADD COLUMN created_at TEXT")
-    if 'part_name' not in columns:
-        c.execute("ALTER TABLE projects ADD COLUMN part_name TEXT")
-    if 'part_number' not in columns:
-        c.execute("ALTER TABLE projects ADD COLUMN part_number TEXT")
-    if 'customer' not in columns:
-        c.execute("ALTER TABLE projects ADD COLUMN customer TEXT")
-    if 'model' not in columns:
-        c.execute("ALTER TABLE projects ADD COLUMN model TEXT")
-    
+    # Create projects table first
     c.execute("""CREATE TABLE IF NOT EXISTS projects (
                 id INTEGER PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -120,18 +107,22 @@ def create_db_and_tables():
                 created_at TEXT,
                 FOREIGN KEY (creator_id) REFERENCES users(id)
               )""")
-              
-    # Create or alter tasks table to add created_at, completed_at, and actual_start
-    c.execute("PRAGMA table_info(tasks)")
+    
+    # Then check and alter projects table to add new columns if they don't exist
+    c.execute("PRAGMA table_info(projects)")
     columns = [col[1] for col in c.fetchall()]
     if 'created_at' not in columns:
-        c.execute("ALTER TABLE tasks ADD COLUMN created_at TEXT")
-    if 'completed_at' not in columns:
-        c.execute("ALTER TABLE tasks ADD COLUMN completed_at TEXT")
-    if 'actual_start' not in columns:
-        c.execute("ALTER TABLE tasks ADD COLUMN actual_start TEXT")
+        c.execute("ALTER TABLE projects ADD COLUMN created_at TEXT")
+    if 'part_name' not in columns:
+        c.execute("ALTER TABLE projects ADD COLUMN part_name TEXT")
+    if 'part_number' not in columns:
+        c.execute("ALTER TABLE projects ADD COLUMN part_number TEXT")
+    if 'customer' not in columns:
+        c.execute("ALTER TABLE projects ADD COLUMN customer TEXT")
+    if 'model' not in columns:
+        c.execute("ALTER TABLE projects ADD COLUMN model TEXT")
 
-    # Create tasks table
+    # Create tasks table first
     c.execute("""CREATE TABLE IF NOT EXISTS tasks (
                 id INTEGER PRIMARY KEY,
                 project_id INTEGER,
@@ -147,6 +138,16 @@ def create_db_and_tables():
                 FOREIGN KEY (pic_id) REFERENCES users(id),
                 FOREIGN KEY (delegator_id) REFERENCES users(id)
               )""")
+    
+    # Then check and alter tasks table to add new columns if they don't exist
+    c.execute("PRAGMA table_info(tasks)")
+    columns = [col[1] for col in c.fetchall()]
+    if 'created_at' not in columns:
+        c.execute("ALTER TABLE tasks ADD COLUMN created_at TEXT")
+    if 'completed_at' not in columns:
+        c.execute("ALTER TABLE tasks ADD COLUMN completed_at TEXT")
+    if 'actual_start' not in columns:
+        c.execute("ALTER TABLE tasks ADD COLUMN actual_start TEXT")
 
     # Create project_members table
     c.execute("""CREATE TABLE IF NOT EXISTS project_members (

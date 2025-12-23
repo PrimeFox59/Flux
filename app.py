@@ -219,6 +219,307 @@ def create_db_and_tables():
 
 create_db_and_tables()
 
+# --- Fungsi Dummy Data ---
+def create_dummy_data():
+    """Membuat data dummy lengkap untuk demo aplikasi."""
+    conn = get_db_connection()
+    c = conn.cursor()
+    
+    # Cek apakah sudah ada project
+    c.execute("SELECT COUNT(*) FROM projects")
+    if c.fetchone()[0] > 0:
+        conn.close()
+        return  # Sudah ada data, tidak perlu membuat dummy
+    
+    try:
+        hashed_dev_pw = hashlib.sha256(DEFAULT_DEV_PASSWORD.encode()).hexdigest()
+        
+        # Tambah beberapa user dummy (Staff dan Supervisor)
+        dummy_users = [
+            ("E001", "Budi Santoso", "Production Machining", "Machining 1", "Staff"),
+            ("E002", "Siti Nurhaliza", "Quality Assurance", "Qa Inspection", "Staff"),
+            ("E003", "Ahmad Wijaya", "Development & Trial", "Development", "Staff"),
+            ("E004", "Rina Mulyani", "Production Equipment Engineering", "Machining Equipment", "Supervisor"),
+            ("E005", "Doni Prakoso", "Foundry Csm", "Melting Disamatic", "Staff"),
+            ("E006", "Maya Sari", "Quality Control", "Laboratory", "Staff"),
+            ("E007", "Eko Susanto", "Maintenance", "Maintenance Mc", "Supervisor"),
+            ("E008", "Lina Wati", "Information System", "Information Technology", "Staff"),
+        ]
+        
+        for user_id, fullname, dept, seksi, role in dummy_users:
+            c.execute("SELECT COUNT(*) FROM users WHERE id = ?", (user_id,))
+            if c.fetchone()[0] == 0:
+                c.execute("INSERT INTO users (id, password, fullname, departemen, seksi, role, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                         (user_id, hashed_dev_pw, fullname, dept, seksi, role, "approved"))
+        
+        # Buat beberapa project dummy
+        projects_data = [
+            {
+                "name": "Development Part Crankcase CB150",
+                "description": "Pengembangan part crankcase untuk motor CB150 dengan material ADC12. Project ini melibatkan redesign untuk meningkatkan kekuatan dan mengurangi cacat produksi.",
+                "part_name": "Crankcase Upper",
+                "part_number": "CB150-CC-001",
+                "customer": "PT. Astra Honda Motor",
+                "model": "CB150R 2024",
+                "creator_id": "M123",
+                "members": ["M123", "S123", "E001", "E003", "E002"],
+                "created_at": (datetime.now() - timedelta(days=45)).strftime("%Y-%m-%d %H:%M:%S")
+            },
+            {
+                "name": "Quality Improvement - Cylinder Head",
+                "description": "Proyek perbaikan kualitas untuk mengurangi reject rate pada proses machining cylinder head. Target pengurangan reject dari 5% menjadi 2%.",
+                "part_name": "Cylinder Head",
+                "part_number": "YZ250-CH-008",
+                "customer": "PT. Yamaha Indonesia",
+                "model": "YZF-R25 2024",
+                "creator_id": "M123",
+                "members": ["M123", "E002", "E004", "E006", "E007"],
+                "created_at": (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d %H:%M:%S")
+            },
+            {
+                "name": "New Tooling Development - Transmission Case",
+                "description": "Pembuatan tooling baru untuk part transmission case dengan teknologi high pressure die casting. Project ini juga melibatkan trial produksi dan validasi.",
+                "part_name": "Transmission Case",
+                "part_number": "KW200-TC-015",
+                "customer": "PT. Kawasaki Motor Indonesia",
+                "model": "Ninja 250SL",
+                "creator_id": "M123",
+                "members": ["M123", "S123", "E003", "E005", "E001"],
+                "created_at": (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d %H:%M:%S")
+            },
+            {
+                "name": "Maintenance System Upgrade",
+                "description": "Upgrade sistem monitoring maintenance untuk meningkatkan efisiensi downtime equipment. Implementasi IoT sensor dan dashboard realtime.",
+                "part_name": "System Software",
+                "part_number": "MAIN-SYS-2024",
+                "customer": "Internal Project",
+                "model": "Version 2.0",
+                "creator_id": "admin123",
+                "members": ["admin123", "E007", "E008", "M123"],
+                "created_at": (datetime.now() - timedelta(days=20)).strftime("%Y-%m-%d %H:%M:%S")
+            }
+        ]
+        
+        project_ids = []
+        for proj_data in projects_data:
+            c.execute("""INSERT INTO projects (name, description, part_name, part_number, customer, model, creator_id, created_at) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                     (proj_data["name"], proj_data["description"], proj_data["part_name"], 
+                      proj_data["part_number"], proj_data["customer"], proj_data["model"],
+                      proj_data["creator_id"], proj_data["created_at"]))
+            project_id = c.lastrowid
+            project_ids.append(project_id)
+            
+            # Tambahkan members
+            for member_id in proj_data["members"]:
+                c.execute("INSERT INTO project_members (project_id, user_id) VALUES (?, ?)", (project_id, member_id))
+        
+        # Buat tasks untuk setiap project
+        tasks_data = [
+            # Project 1: Development Part Crankcase CB150
+            [
+                {"title": "Design Review & Material Selection", "pic_id": "E003", "delegator_id": "M123", "due_date": (datetime.now() - timedelta(days=40)).strftime("%Y-%m-%d"), "status": "Done", "days_ago": 42},
+                {"title": "CAD Design & Simulation", "pic_id": "E003", "delegator_id": "M123", "due_date": (datetime.now() - timedelta(days=35)).strftime("%Y-%m-%d"), "status": "Done", "days_ago": 38},
+                {"title": "Pattern Making & Mold Preparation", "pic_id": "E001", "delegator_id": "M123", "due_date": (datetime.now() - timedelta(days=25)).strftime("%Y-%m-%d"), "status": "Done", "days_ago": 27},
+                {"title": "First Trial Production", "pic_id": "E001", "delegator_id": "S123", "due_date": (datetime.now() - timedelta(days=15)).strftime("%Y-%m-%d"), "status": "Waiting Approval", "days_ago": 16},
+                {"title": "Quality Inspection & Dimensional Check", "pic_id": "E002", "delegator_id": "M123", "due_date": (datetime.now() - timedelta(days=10)).strftime("%Y-%m-%d"), "status": "In Progress", "days_ago": 12},
+                {"title": "Customer Approval & Documentation", "pic_id": "E002", "delegator_id": "M123", "due_date": (datetime.now() + timedelta(days=5)).strftime("%Y-%m-%d"), "status": "Not Started", "days_ago": None},
+            ],
+            # Project 2: Quality Improvement - Cylinder Head
+            [
+                {"title": "Root Cause Analysis - Reject Issue", "pic_id": "E002", "delegator_id": "M123", "due_date": (datetime.now() - timedelta(days=25)).strftime("%Y-%m-%d"), "status": "Done", "days_ago": 28},
+                {"title": "Process Parameter Optimization", "pic_id": "E004", "delegator_id": "M123", "due_date": (datetime.now() - timedelta(days=18)).strftime("%Y-%m-%d"), "status": "Done", "days_ago": 20},
+                {"title": "Tooling Maintenance & Calibration", "pic_id": "E007", "delegator_id": "M123", "due_date": (datetime.now() - timedelta(days=12)).strftime("%Y-%m-%d"), "status": "Waiting Approval", "days_ago": 13},
+                {"title": "Trial Run dengan Parameter Baru", "pic_id": "E004", "delegator_id": "M123", "due_date": (datetime.now() - timedelta(days=5)).strftime("%Y-%m-%d"), "status": "In Progress", "days_ago": 6},
+                {"title": "Statistical Analysis & Report", "pic_id": "E006", "delegator_id": "M123", "due_date": (datetime.now() + timedelta(days=3)).strftime("%Y-%m-%d"), "status": "Not Started", "days_ago": None},
+            ],
+            # Project 3: New Tooling Development - Transmission Case
+            [
+                {"title": "Tooling Specification & Design", "pic_id": "E003", "delegator_id": "M123", "due_date": (datetime.now() - timedelta(days=55)).strftime("%Y-%m-%d"), "status": "Done", "days_ago": 57},
+                {"title": "Supplier Selection & PO", "pic_id": "S123", "delegator_id": "M123", "due_date": (datetime.now() - timedelta(days=50)).strftime("%Y-%m-%d"), "status": "Done", "days_ago": 52},
+                {"title": "Tooling Fabrication Monitoring", "pic_id": "E003", "delegator_id": "M123", "due_date": (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d"), "status": "Done", "days_ago": 32},
+                {"title": "Tooling Installation & Setup", "pic_id": "E005", "delegator_id": "S123", "due_date": (datetime.now() - timedelta(days=15)).strftime("%Y-%m-%d"), "status": "Done", "days_ago": 17},
+                {"title": "First Casting Trial", "pic_id": "E005", "delegator_id": "S123", "due_date": (datetime.now() - timedelta(days=8)).strftime("%Y-%m-%d"), "status": "Waiting Approval", "days_ago": 9},
+                {"title": "Quality Validation", "pic_id": "E001", "delegator_id": "M123", "due_date": (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d"), "status": "In Progress", "days_ago": 3},
+                {"title": "Mass Production Preparation", "pic_id": "E001", "delegator_id": "M123", "due_date": (datetime.now() + timedelta(days=10)).strftime("%Y-%m-%d"), "status": "Not Started", "days_ago": None},
+            ],
+            # Project 4: Maintenance System Upgrade
+            [
+                {"title": "System Requirement Analysis", "pic_id": "E008", "delegator_id": "admin123", "due_date": (datetime.now() - timedelta(days=18)).strftime("%Y-%m-%d"), "status": "Done", "days_ago": 19},
+                {"title": "IoT Sensor Installation", "pic_id": "E007", "delegator_id": "admin123", "due_date": (datetime.now() - timedelta(days=12)).strftime("%Y-%m-%d"), "status": "Done", "days_ago": 14},
+                {"title": "Dashboard Development", "pic_id": "E008", "delegator_id": "admin123", "due_date": (datetime.now() - timedelta(days=5)).strftime("%Y-%m-%d"), "status": "In Progress", "days_ago": 6},
+                {"title": "User Training & Documentation", "pic_id": "E008", "delegator_id": "admin123", "due_date": (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d"), "status": "Not Started", "days_ago": None},
+                {"title": "System Go-Live", "pic_id": "admin123", "delegator_id": "admin123", "due_date": (datetime.now() + timedelta(days=15)).strftime("%Y-%m-%d"), "status": "Not Started", "days_ago": None},
+            ]
+        ]
+        
+        task_ids_by_project = []
+        for proj_idx, project_id in enumerate(project_ids):
+            task_ids = []
+            for task_data in tasks_data[proj_idx]:
+                created_at = (datetime.now() - timedelta(days=task_data.get("days_ago", 0))).strftime("%Y-%m-%d %H:%M:%S") if task_data.get("days_ago") else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                completed_at = None
+                actual_start = None
+                
+                if task_data["status"] == "Done":
+                    completed_at = (datetime.now() - timedelta(days=task_data.get("days_ago", 0) - 2)).strftime("%Y-%m-%d %H:%M:%S")
+                    actual_start = (datetime.now() - timedelta(days=task_data.get("days_ago", 0) - 1)).strftime("%Y-%m-%d %H:%M:%S")
+                elif task_data["status"] == "In Progress":
+                    actual_start = (datetime.now() - timedelta(days=task_data.get("days_ago", 1))).strftime("%Y-%m-%d %H:%M:%S")
+                
+                c.execute("""INSERT INTO tasks (project_id, title, pic_id, delegator_id, due_date, status, created_at, completed_at, actual_start) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                         (project_id, task_data["title"], task_data["pic_id"], task_data["delegator_id"], 
+                          task_data["due_date"], task_data["status"], created_at, completed_at, actual_start))
+                task_ids.append(c.lastrowid)
+            task_ids_by_project.append(task_ids)
+        
+        # Buat chat messages untuk setiap project
+        chat_messages = [
+            # Project 1: Development Part Crankcase CB150
+            [
+                {"sender_id": "M123", "message": "Tim, kita mulai project development crankcase CB150. Silakan cek detail di task masing-masing.", "days_ago": 45, "hours_ago": 10},
+                {"sender_id": "E003", "message": "Siap Pak! Saya akan mulai dari design review dan material selection.", "days_ago": 45, "hours_ago": 9},
+                {"sender_id": "S123", "message": "Untuk material, apakah tetap pakai ADC12 atau ada alternatif lain?", "days_ago": 45, "hours_ago": 8},
+                {"sender_id": "M123", "message": "Tetap ADC12, sudah approved dari customer. Fokus ke design optimization.", "days_ago": 45, "hours_ago": 7},
+                {"sender_id": "E003", "message": "Update: Design review sudah selesai. Akan lanjut ke CAD modeling.", "days_ago": 40, "hours_ago": 14},
+                {"sender_id": "E001", "message": "CAD design sudah ready ya? Saya perlu untuk persiapan pattern making.", "days_ago": 35, "hours_ago": 10},
+                {"sender_id": "E003", "message": "Sudah, saya share file CAD-nya via email. Ada 3 variant design.", "days_ago": 35, "hours_ago": 9},
+                {"sender_id": "E001", "message": "Pattern making selesai. Mold sudah siap untuk trial production.", "days_ago": 25, "hours_ago": 15},
+                {"sender_id": "S123", "message": "Bagus! Schedule trial production untuk minggu depan ya.", "days_ago": 25, "hours_ago": 14},
+                {"sender_id": "E001", "message": "Trial production sudah selesai. Ada 50 pcs sample. Menunggu QA check.", "days_ago": 15, "hours_ago": 11},
+                {"sender_id": "E002", "message": "Saya sudah terima sample-nya. Akan saya inspect segera.", "days_ago": 15, "hours_ago": 10},
+                {"sender_id": "E002", "message": "Update inspection: Ada minor issue di area fillet radius. Perlu sedikit adjustment.", "days_ago": 12, "hours_ago": 16},
+                {"sender_id": "M123", "message": "Coordinate dengan E001 untuk adjustment. Target submit ke customer akhir bulan ini.", "days_ago": 12, "hours_ago": 15},
+                {"sender_id": "E001", "message": "Adjustment sudah dilakukan. Ready untuk trial ke-2.", "days_ago": 10, "hours_ago": 9},
+            ],
+            # Project 2: Quality Improvement - Cylinder Head
+            [
+                {"sender_id": "M123", "message": "Project quality improvement dimulai. Target kita turunkan reject rate dari 5% ke 2%.", "days_ago": 30, "hours_ago": 10},
+                {"sender_id": "E002", "message": "Siap Pak! Saya akan start dengan root cause analysis.", "days_ago": 30, "hours_ago": 9},
+                {"sender_id": "E006", "message": "Saya bantu dari sisi laboratory testing untuk material analysis.", "days_ago": 30, "hours_ago": 8},
+                {"sender_id": "E002", "message": "Root cause analysis selesai. Main issue ada di process parameter yang tidak konsisten.", "days_ago": 25, "hours_ago": 14},
+                {"sender_id": "E004", "message": "Noted. Saya akan optimize parameter machining-nya.", "days_ago": 25, "hours_ago": 13},
+                {"sender_id": "E007", "message": "Saya cek kondisi tooling juga ya, mungkin perlu maintenance.", "days_ago": 25, "hours_ago": 12},
+                {"sender_id": "E004", "message": "Parameter optimization selesai. Sudah saya dokumentasikan di SOP baru.", "days_ago": 18, "hours_ago": 15},
+                {"sender_id": "E007", "message": "Tooling maintenance & calibration sudah selesai. Semua dalam kondisi optimal.", "days_ago": 12, "hours_ago": 14},
+                {"sender_id": "M123", "message": "Good job team! Sekarang kita trial run dengan parameter baru.", "days_ago": 12, "hours_ago": 13},
+                {"sender_id": "E004", "message": "Trial run sedang berjalan. So far hasilnya promising, reject rate turun drastis.", "days_ago": 5, "hours_ago": 10},
+                {"sender_id": "E006", "message": "Saya standby untuk statistical analysis setelah trial selesai.", "days_ago": 5, "hours_ago": 9},
+            ],
+            # Project 3: New Tooling Development - Transmission Case
+            [
+                {"sender_id": "M123", "message": "Project tooling baru untuk transmission case dimulai. Timeline ketat, 2 bulan harus selesai.", "days_ago": 60, "hours_ago": 10},
+                {"sender_id": "E003", "message": "Design specification sudah saya buat. Akan koordinasi dengan supplier.", "days_ago": 60, "hours_ago": 9},
+                {"sender_id": "S123", "message": "Saya handle supplier selection dan PO process.", "days_ago": 55, "hours_ago": 14},
+                {"sender_id": "E003", "message": "Design final sudah approved. Supplier bisa mulai fabrication.", "days_ago": 55, "hours_ago": 13},
+                {"sender_id": "S123", "message": "PO sudah keluar. Lead time 4 minggu.", "days_ago": 50, "hours_ago": 10},
+                {"sender_id": "E003", "message": "Update dari supplier: Fabrication progress 50%. On schedule.", "days_ago": 40, "hours_ago": 11},
+                {"sender_id": "E003", "message": "Tooling sudah sampai! Quality check OK, siap untuk installation.", "days_ago": 30, "hours_ago": 15},
+                {"sender_id": "E005", "message": "Installation dan setup sudah selesai. Besok kita trial casting.", "days_ago": 15, "hours_ago": 14},
+                {"sender_id": "E005", "message": "First casting trial selesai. Hasilnya bagus, menunggu approval dari QA.", "days_ago": 8, "hours_ago": 10},
+                {"sender_id": "E001", "message": "Saya sedang proses quality validation. Ada beberapa point yang perlu di-verify.", "days_ago": 2, "hours_ago": 9},
+                {"sender_id": "M123", "message": "Keep me updated. Kalau OK, kita bisa proceed ke mass production prep.", "days_ago": 2, "hours_ago": 8},
+            ],
+            # Project 4: Maintenance System Upgrade
+            [
+                {"sender_id": "admin123", "message": "Project upgrade sistem maintenance dimulai. Kita akan implementasi IoT dan dashboard realtime.", "days_ago": 20, "hours_ago": 10},
+                {"sender_id": "E008", "message": "Saya mulai dengan requirement analysis. Butuh input dari maintenance team.", "days_ago": 20, "hours_ago": 9},
+                {"sender_id": "E007", "message": "Siap! Saya list semua requirement dari sisi maintenance.", "days_ago": 20, "hours_ago": 8},
+                {"sender_id": "E008", "message": "Requirement analysis selesai. Sudah saya compile jadi dokumen lengkap.", "days_ago": 18, "hours_ago": 15},
+                {"sender_id": "E007", "message": "IoT sensor installation selesai di 15 equipment critical. Sudah testing connection.", "days_ago": 12, "hours_ago": 14},
+                {"sender_id": "E008", "message": "Perfect! Data sensor sudah mulai masuk. Saya lanjut develop dashboard-nya.", "days_ago": 12, "hours_ago": 13},
+                {"sender_id": "admin123", "message": "Progress bagus! Pastikan dashboard user-friendly untuk operator.", "days_ago": 10, "hours_ago": 11},
+                {"sender_id": "E008", "message": "Dashboard development progress 60%. Fitur monitoring realtime sudah jalan.", "days_ago": 5, "hours_ago": 10},
+                {"sender_id": "M123", "message": "Menarik sekali projectnya! Bisa share preview dashboard-nya?", "days_ago": 5, "hours_ago": 9},
+                {"sender_id": "E008", "message": "Siap Pak! Nanti saya schedule demo untuk management.", "days_ago": 5, "hours_ago": 8},
+            ]
+        ]
+        
+        for proj_idx, project_id in enumerate(project_ids):
+            for msg_data in chat_messages[proj_idx]:
+                timestamp = (datetime.now() - timedelta(days=msg_data["days_ago"], hours=msg_data["hours_ago"])).strftime("%Y-%m-%d %H:%M:%S")
+                c.execute("INSERT INTO chats (project_id, sender_id, message, timestamp, is_read) VALUES (?, ?, ?, ?, ?)",
+                         (project_id, msg_data["sender_id"], msg_data["message"], timestamp, 1))
+        
+        # Buat direct chat messages antara beberapa user
+        direct_chats = [
+            # Chat antara E001 dan E003 (koordinasi antar departemen)
+            [
+                {"sender_id": "E001", "receiver_id": "E003", "message": "Mas Ahmad, untuk CAD design crankcase, bisa tolong kirim file STEP-nya? Perlu untuk verifikasi pattern.", "days_ago": 36, "hours_ago": 10},
+                {"sender_id": "E003", "receiver_id": "E001", "message": "Siap Mas Budi! File sudah saya kirim ke email. Ada 3 variant.", "days_ago": 36, "hours_ago": 9},
+                {"sender_id": "E001", "receiver_id": "E003", "message": "Terima kasih! Saya cek dulu. Kalau ada yang perlu didiskusikan, saya kabari lagi ya.", "days_ago": 36, "hours_ago": 8},
+                {"sender_id": "E003", "receiver_id": "E001", "message": "Oke siap! Kalau ada concern langsung aja chat atau telpon.", "days_ago": 36, "hours_ago": 7},
+                {"sender_id": "E001", "receiver_id": "E003", "message": "Mas, ada sedikit concern di area draft angle. Bisa kita meeting sebentar?", "days_ago": 34, "hours_ago": 14},
+                {"sender_id": "E003", "receiver_id": "E001", "message": "Bisa! Jam 2 siang di ruang meeting development gimana?", "days_ago": 34, "hours_ago": 13},
+                {"sender_id": "E001", "receiver_id": "E003", "message": "Deal! See you there.", "days_ago": 34, "hours_ago": 13},
+            ],
+            # Chat antara E002 dan E006 (QA dan Lab)
+            [
+                {"sender_id": "E002", "receiver_id": "E006", "message": "Mba Maya, bisa bantu testing material untuk sample cylinder head? Perlu chemical composition analysis.", "days_ago": 26, "hours_ago": 11},
+                {"sender_id": "E006", "receiver_id": "E002", "message": "Bisa Bu Siti! Sample-nya sudah ada? Kirim ke lab ya.", "days_ago": 26, "hours_ago": 10},
+                {"sender_id": "E002", "receiver_id": "E006", "message": "Sudah saya kirim tadi pagi 5 pcs. Urgent soalnya, kalau bisa hasil-nya besok.", "days_ago": 26, "hours_ago": 9},
+                {"sender_id": "E006", "receiver_id": "E002", "message": "Oke noted! Saya prioritaskan. Besok sore hasilnya ready.", "days_ago": 26, "hours_ago": 9},
+                {"sender_id": "E006", "receiver_id": "E002", "message": "Bu Siti, hasil test sudah keluar. Saya kirim report via email ya. Overall composition OK sesuai spec.", "days_ago": 25, "hours_ago": 15},
+                {"sender_id": "E002", "receiver_id": "E006", "message": "Terima kasih Mba Maya! Fast response banget. Sangat membantu.", "days_ago": 25, "hours_ago": 14},
+            ],
+            # Chat antara S123 dan E004 (Supervisor koordinasi dengan staff)
+            [
+                {"sender_id": "S123", "receiver_id": "E004", "message": "Mba Rina, untuk parameter optimization cylinder head, progressnya gimana?", "days_ago": 20, "hours_ago": 10},
+                {"sender_id": "E004", "receiver_id": "S123", "message": "Sudah selesai Pak! SOP baru sudah saya buat dan testing awal hasilnya bagus.", "days_ago": 20, "hours_ago": 9},
+                {"sender_id": "S123", "receiver_id": "E004", "message": "Bagus! Bisa presentasi ke team besok? Biar semua operator paham.", "days_ago": 20, "hours_ago": 8},
+                {"sender_id": "E004", "receiver_id": "S123", "message": "Siap Pak! Saya persiapkan slide presentasi-nya.", "days_ago": 20, "hours_ago": 7},
+            ],
+            # Chat antara E007 dan E008 (Maintenance dan IT)
+            [
+                {"sender_id": "E007", "receiver_id": "E008", "message": "Lina, untuk IoT sensor yang mau dipasang, ada spesifikasi khusus ga? Biar saya persiapkan bracket-nya.", "days_ago": 15, "hours_ago": 11},
+                {"sender_id": "E008", "receiver_id": "E007", "message": "Ada Pak Eko! Saya kirim spec sheet-nya via WA ya. Mostly sensor temperature dan vibration.", "days_ago": 15, "hours_ago": 10},
+                {"sender_id": "E007", "receiver_id": "E008", "message": "Oke siap! Kalau ada yang perlu dikoordinasikan lagi, langsung aja.", "days_ago": 15, "hours_ago": 9},
+                {"sender_id": "E008", "receiver_id": "E007", "message": "Pak Eko, sensor installation-nya sudah beres ya? Saya perlu akses ke data untuk testing.", "days_ago": 12, "hours_ago": 16},
+                {"sender_id": "E007", "receiver_id": "E008", "message": "Sudah semua! Network connection juga sudah oke. Silakan di-test.", "days_ago": 12, "hours_ago": 15},
+                {"sender_id": "E008", "receiver_id": "E007", "message": "Perfect! Data sudah masuk dengan baik. Thank you Pak!", "days_ago": 12, "hours_ago": 14},
+            ],
+            # Chat antara M123 dan admin123 (Manager level discussion)
+            [
+                {"sender_id": "M123", "receiver_id": "admin123", "message": "Admin, untuk dashboard maintenance system, bisa diintegrasikan dengan sistem existing ga?", "days_ago": 10, "hours_ago": 11},
+                {"sender_id": "admin123", "receiver_id": "M123", "message": "Bisa Pak! Kita pakai API integration. Nanti bisa centralized di satu dashboard.", "days_ago": 10, "hours_ago": 10},
+                {"sender_id": "M123", "receiver_id": "admin123", "message": "Bagus! Kalau begitu bisa jadi pilot project untuk implementasi di area lain juga.", "days_ago": 10, "hours_ago": 9},
+                {"sender_id": "admin123", "receiver_id": "M123", "message": "Setuju Pak! Sekalian kita buat standard framework-nya untuk scale up.", "days_ago": 10, "hours_ago": 8},
+            ]
+        ]
+        
+        for chat_thread in direct_chats:
+            for msg_data in chat_thread:
+                timestamp = (datetime.now() - timedelta(days=msg_data["days_ago"], hours=msg_data["hours_ago"])).strftime("%Y-%m-%d %H:%M:%S")
+                c.execute("INSERT INTO direct_chats (sender_id, receiver_id, message, timestamp, is_read) VALUES (?, ?, ?, ?, ?)",
+                         (msg_data["sender_id"], msg_data["receiver_id"], msg_data["message"], timestamp, 1))
+        
+        # Tambahkan audit trail untuk aktivitas-aktivitas penting
+        audit_entries = [
+            {"user_id": "M123", "action": "Create Project", "details": "Project 'Development Part Crankcase CB150' telah dibuat.", "days_ago": 45},
+            {"user_id": "M123", "action": "Assign Task", "details": "Task 'Design Review & Material Selection' assigned to E003", "days_ago": 45},
+            {"user_id": "E003", "action": "Complete Task", "details": "Task 'Design Review & Material Selection' telah diselesaikan.", "days_ago": 40},
+            {"user_id": "M123", "action": "Create Project", "details": "Project 'Quality Improvement - Cylinder Head' telah dibuat.", "days_ago": 30},
+            {"user_id": "E002", "action": "Complete Task", "details": "Task 'Root Cause Analysis - Reject Issue' telah diselesaikan.", "days_ago": 25},
+            {"user_id": "admin123", "action": "Create Project", "details": "Project 'Maintenance System Upgrade' telah dibuat.", "days_ago": 20},
+            {"user_id": "E008", "action": "Complete Task", "details": "Task 'System Requirement Analysis' telah diselesaikan.", "days_ago": 18},
+            {"user_id": "E007", "action": "Complete Task", "details": "Task 'IoT Sensor Installation' telah diselesaikan.", "days_ago": 12},
+        ]
+        
+        for entry in audit_entries:
+            timestamp = (datetime.now() - timedelta(days=entry["days_ago"])).strftime("%Y-%m-%d %H:%M:%S")
+            c.execute("INSERT INTO audit_trail (timestamp, user_id, action, details) VALUES (?, ?, ?, ?)",
+                     (timestamp, entry["user_id"], entry["action"], entry["details"]))
+        
+        conn.commit()
+        print("✅ Dummy data berhasil dibuat!")
+        
+    except sqlite3.Error as e:
+        conn.rollback()
+        print(f"❌ Error saat membuat dummy data: {e}")
+    finally:
+        conn.close()
+
 # --- Custom CSS untuk link download ---
 st.markdown("""
 <style>
@@ -810,6 +1111,9 @@ def mark_project_messages_as_read(project_id, user_id):
     conn.commit()
     conn.close()
 
+# Panggil fungsi create_dummy_data setelah semua fungsi database didefinisikan
+create_dummy_data()
+
 # --- Fungsi Tampilan UI ---
 def show_login_page():
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -1067,67 +1371,166 @@ def show_project_details(project_id):
         
         # ==================== TAB 1: INFO PROYEK ====================
         with info_tab:
-            st.subheader("Identitas Proyek")
+            st.markdown("""
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h2 style="color: #2c3e50; font-weight: 600; margin: 0; font-size: 1.8em;">
+                    🎯 Identitas Proyek
+                </h2>
+                <div style="width: 80px; height: 4px; background: linear-gradient(90deg, #f093fb, #4facfe); margin: 15px auto; border-radius: 2px;"></div>
+            </div>
+            """, unsafe_allow_html=True)
             
-            col1, col2 = st.columns(2)
+            col1, col2 = st.columns(2, gap="large")
             with col1:
+                id_val = project_details['id']
+                creator_name = get_user(project_details['creator_id'])['fullname']
+                part_name = project_details['part_name']
+                part_num = project_details['part_number']
+                
                 st.markdown(f"""
-                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
-                    <p style="margin: 5px 0;"><strong>ID Proyek:</strong> {project_details['id']}</p>
-                    <p style="margin: 5px 0;"><strong>Pembuat:</strong> {get_user(project_details['creator_id'])['fullname']}</p>
-                    <p style="margin: 5px 0;"><strong>Nama Part:</strong> {project_details['part_name']}</p>
-                    <p style="margin: 5px 0;"><strong>Nomor Part:</strong> {project_details['part_number']}</p>
+                <div style="background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%); padding: 30px; border-radius: 18px; margin-bottom: 15px; box-shadow: 0 8px 25px rgba(255, 107, 157, 0.25); color: white; border: 1px solid rgba(255, 255, 255, 0.1);">
+                    <div style="display: flex; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.2);">
+                        <span style="font-size: 1.5em; margin-right: 12px;">🆔</span>
+                        <div style="flex: 1;">
+                            <p style="margin: 0; font-size: 0.85em; opacity: 0.85; font-weight: 500; letter-spacing: 0.5px;">ID PROYEK</p>
+                            <p style="margin: 5px 0 0 0; font-size: 1.3em; font-weight: 700;">{id_val}</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.2);">
+                        <span style="font-size: 1.5em; margin-right: 12px;">👤</span>
+                        <div style="flex: 1;">
+                            <p style="margin: 0; font-size: 0.85em; opacity: 0.85; font-weight: 500; letter-spacing: 0.5px;">PEMBUAT</p>
+                            <p style="margin: 5px 0 0 0; font-size: 1.15em; font-weight: 600;">{creator_name}</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.2);">
+                        <span style="font-size: 1.5em; margin-right: 12px;">🔧</span>
+                        <div style="flex: 1;">
+                            <p style="margin: 0; font-size: 0.85em; opacity: 0.85; font-weight: 500; letter-spacing: 0.5px;">NAMA PART</p>
+                            <p style="margin: 5px 0 0 0; font-size: 1.15em; font-weight: 600;">{part_name}</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <span style="font-size: 1.5em; margin-right: 12px;">📦</span>
+                        <div style="flex: 1;">
+                            <p style="margin: 0; font-size: 0.85em; opacity: 0.85; font-weight: 500; letter-spacing: 0.5px;">NOMOR PART</p>
+                            <p style="margin: 5px 0 0 0; font-size: 1.15em; font-weight: 600;">{part_num}</p>
+                        </div>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
             
             with col2:
+                customer = project_details['customer']
+                model = project_details['model']
+                desc = project_details['description']
+                
                 st.markdown(f"""
-                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
-                    <p style="margin: 5px 0;"><strong>Pelanggan:</strong> {project_details['customer']}</p>
-                    <p style="margin: 5px 0;"><strong>Model:</strong> {project_details['model']}</p>
-                    <p style="margin: 5px 0;"><strong>Deskripsi:</strong> {project_details['description']}</p>
+                <div style="background: linear-gradient(135deg, #4facfe 0%, #00c6fb 100%); padding: 30px; border-radius: 18px; margin-bottom: 15px; box-shadow: 0 8px 25px rgba(79, 172, 254, 0.25); color: white; border: 1px solid rgba(255, 255, 255, 0.1);">
+                    <div style="display: flex; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.2);">
+                        <span style="font-size: 1.5em; margin-right: 12px;">🏢</span>
+                        <div style="flex: 1;">
+                            <p style="margin: 0; font-size: 0.85em; opacity: 0.85; font-weight: 500; letter-spacing: 0.5px;">PELANGGAN</p>
+                            <p style="margin: 5px 0 0 0; font-size: 1.15em; font-weight: 600;">{customer}</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.2);">
+                        <span style="font-size: 1.5em; margin-right: 12px;">🚗</span>
+                        <div style="flex: 1;">
+                            <p style="margin: 0; font-size: 0.85em; opacity: 0.85; font-weight: 500; letter-spacing: 0.5px;">MODEL</p>
+                            <p style="margin: 5px 0 0 0; font-size: 1.15em; font-weight: 600;">{model}</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: flex-start;">
+                        <span style="font-size: 1.5em; margin-right: 12px;">📝</span>
+                        <div style="flex: 1;">
+                            <p style="margin: 0; font-size: 0.85em; opacity: 0.85; font-weight: 500; letter-spacing: 0.5px;">DESKRIPSI</p>
+                            <p style="margin: 5px 0 0 0; font-size: 0.98em; line-height: 1.6; font-weight: 400;">{desc}</p>
+                        </div>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
             
             st.markdown("---")
             
-            # Anggota Proyek
-            st.subheader("👥 Anggota Proyek")
-            member_cols = st.columns(min(len(project_members), 4))
-            for idx, member in enumerate(project_members):
-                with member_cols[idx % 4]:
+            # Layout 2 kolom untuk Anggota Proyek dan Overview Progress
+            col_members, col_progress = st.columns([1, 1])
+            
+            # KOLOM 1: Anggota Proyek
+            with col_members:
+                st.subheader("👥 Anggota Proyek")
+                
+                # Warna untuk setiap role
+                role_colors = {
+                    'Admin': 'linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%)',
+                    'Manager': 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                    'Supervisor': 'linear-gradient(135deg, #ffa726 0%, #fb8c00 100%)',
+                    'Staff': 'linear-gradient(135deg, #ab47bc 0%, #8e24aa 100%)'
+                }
+                
+                # Display members vertically in single column
+                for member in project_members:
+                    gradient = role_colors.get(member['role'], role_colors['Staff'])
+                    member_name = member['fullname']
+                    member_role = member['role']
                     st.markdown(f"""
-                    <div style="background-color: #e9ecef; padding: 10px; border-radius: 5px; text-align: center; margin-bottom: 5px;">
-                        <p style="margin: 0; font-weight: bold;">{member['fullname']}</p>
-                        <p style="margin: 0; font-size: 0.85em; color: #666;">{member['role']}</p>
+                    <div style="background: {gradient}; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 10px; box-shadow: 0 3px 10px rgba(0,0,0,0.2);">
+                        <p style="margin: 0; font-weight: bold; color: white; font-size: 1em;">{member_name}</p>
+                        <p style="margin: 5px 0 0 0; font-size: 0.85em; color: rgba(255,255,255,0.9); background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 12px; display: inline-block;">{member_role}</p>
                     </div>
                     """, unsafe_allow_html=True)
             
-            st.markdown("---")
-            
-            # Overview Progress
-            st.subheader("📊 Overview Progress")
-            total_tasks = len(tasks)
-            done_tasks = len([t for t in tasks if t['status'] == 'Done'])
-            on_progress = len([t for t in tasks if t['status'] == 'On Progress'])
-            pending = len([t for t in tasks if t['status'] == 'Pending Approval'])
-            yet_tasks = len([t for t in tasks if t['status'] == 'Yet'])
-            
-            col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
-            with col_stat1:
-                st.metric("Total Tasks", total_tasks)
-            with col_stat2:
-                st.metric("Done", done_tasks, f"{int(done_tasks/total_tasks*100) if total_tasks > 0 else 0}%")
-            with col_stat3:
-                st.metric("On Progress", on_progress)
-            with col_stat4:
-                st.metric("Yet to Start", yet_tasks)
-            
-            # Progress Bar
-            if total_tasks > 0:
-                progress_percentage = done_tasks / total_tasks
-                st.progress(progress_percentage)
-                st.caption(f"Progress: {int(progress_percentage * 100)}% Complete")
+            # KOLOM 2: Overview Progress
+            with col_progress:
+                st.subheader("📊 Overview Progress")
+                
+                total_tasks = len(tasks)
+                done_tasks = len([t for t in tasks if t['status'] == 'Done'])
+                on_progress = len([t for t in tasks if t['status'] == 'On Progress'])
+                pending = len([t for t in tasks if t['status'] == 'Pending Approval'])
+                yet_tasks = len([t for t in tasks if t['status'] == 'Yet'])
+                percentage = int(done_tasks/total_tasks*100) if total_tasks > 0 else 0
+                
+                # Horizontal Layout - 4 kolom dalam 1 baris
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.markdown(f"""
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 25px 15px; border-radius: 15px; text-align: center; box-shadow: 0 6px 15px rgba(102, 126, 234, 0.3); margin-bottom: 10px; height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <p style="color: rgba(255,255,255,0.95); margin: 0 0 8px 0; font-size: 0.9em; font-weight: 500; letter-spacing: 0.5px;">Total Tasks</p>
+                        <h1 style="color: white; margin: 0; font-weight: 700; font-size: 3em; line-height: 1;">{total_tasks}</h1>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown(f"""
+                    <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 25px 15px; border-radius: 15px; text-align: center; box-shadow: 0 6px 15px rgba(56, 239, 125, 0.3); margin-bottom: 10px; height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <p style="color: rgba(255,255,255,0.95); margin: 0 0 8px 0; font-size: 0.9em; font-weight: 500; letter-spacing: 0.5px;">Done</p>
+                        <h1 style="color: white; margin: 0; font-weight: 700; font-size: 3em; line-height: 1;">{done_tasks}</h1>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col3:
+                    st.markdown(f"""
+                    <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 25px 15px; border-radius: 15px; text-align: center; box-shadow: 0 6px 15px rgba(245, 87, 108, 0.3); margin-bottom: 10px; height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <p style="color: rgba(255,255,255,0.95); margin: 0 0 8px 0; font-size: 0.9em; font-weight: 500; letter-spacing: 0.5px;">On Progress</p>
+                        <h1 style="color: white; margin: 0; font-weight: 700; font-size: 3em; line-height: 1;">{on_progress}</h1>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col4:
+                    st.markdown(f"""
+                    <div style="background: linear-gradient(135deg, #ffa726 0%, #fb8c00 100%); padding: 25px 15px; border-radius: 15px; text-align: center; box-shadow: 0 6px 15px rgba(255, 167, 38, 0.3); margin-bottom: 10px; height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <p style="color: rgba(255,255,255,0.95); margin: 0 0 8px 0; font-size: 0.9em; font-weight: 500; letter-spacing: 0.5px;">Yet to Start</p>
+                        <h1 style="color: white; margin: 0; font-weight: 700; font-size: 3em; line-height: 1;">{yet_tasks}</h1>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                # Progress Bar
+                if total_tasks > 0:
+                    progress_percentage = done_tasks / total_tasks
+                    st.progress(progress_percentage)
+                    st.caption(f"Progress: {int(progress_percentage * 100)}% Complete")
             
             st.markdown("---")
             
@@ -1144,6 +1547,9 @@ def show_project_details(project_id):
                 
                 task_names = []
                 y_positions = []
+                has_data = False
+                legend_plan_added = False
+                legend_actual_added = False
                 
                 for idx, task in enumerate(reversed(tasks)):  # Reversed agar task pertama di atas
                     created = task.get('created_at')
@@ -1605,16 +2011,38 @@ def show_project_details(project_id):
             chat_container = st.container(height=400)
             with chat_container:
                 for msg in project_details['chatMessages']:
-                    sender = get_user(msg['sender_id'])['fullname']
+                    sender_user = get_user(msg['sender_id'])
+                    sender = sender_user['fullname']
+                    sender_role = sender_user['role']
                     is_me = msg['sender_id'] == st.session_state.current_user['id']
                     
-                    align = 'flex-end' if is_me else 'flex-start'
-                    bg_color = '#dcf8c6' if is_me else '#e5e5ea'
+                    # Warna berdasarkan role untuk pesan orang lain
+                    role_colors = {
+                        'Admin': {'bg': '#FFE5E5', 'border': '#FF6B6B', 'name': '#C92A2A'},  # Merah muda
+                        'Manager': {'bg': '#E3F2FD', 'border': '#2196F3', 'name': '#0D47A1'},  # Biru
+                        'Supervisor': {'bg': '#FFF3E0', 'border': '#FF9800', 'name': '#E65100'},  # Orange
+                        'Staff': {'bg': '#F3E5F5', 'border': '#9C27B0', 'name': '#4A148C'}  # Ungu
+                    }
+                    
+                    if is_me:
+                        align = 'flex-end'
+                        bg_color = '#DCF8C6'  # Hijau muda untuk pesan sendiri
+                        border_color = '#4CAF50'
+                        name_color = '#2E7D32'
+                        shadow = '2px 2px 5px rgba(0,0,0,0.15)'
+                    else:
+                        align = 'flex-start'
+                        role_style = role_colors.get(sender_role, role_colors['Staff'])
+                        bg_color = role_style['bg']
+                        border_color = role_style['border']
+                        name_color = role_style['name']
+                        shadow = '2px 2px 5px rgba(0,0,0,0.1)'
+                    
                     text_color = 'black'
                     
                     # Parse & render content
                     the_msg = msg['message']
-                    msg_html = f"<strong>{sender}</strong><br>"
+                    msg_html = f"<strong style='color: {name_color};'>{sender}</strong> <span style='font-size: 0.75em; color: #666;'>({sender_role})</span><br>"
                     content_html = ""
                     
                     if '[IMAGE]' in the_msg:
@@ -1628,7 +2056,8 @@ def show_project_details(project_id):
                                     import base64
                                     img_b64 = base64.b64encode(img_f.read()).decode('utf-8')
                                 ext = os.path.splitext(image_path)[-1][1:] or 'png'
-                                content_html += f'<img src="data:image/{ext};base64,{img_b64}" width="200" style="margin:4px 0; border-radius:8px;" />'
+                                filename = os.path.basename(image_path)
+                                content_html += f'''<div style="margin: 8px 0;"><img src="data:image/{ext};base64,{img_b64}" style="max-width: 300px; max-height: 300px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s ease;" onclick="window.open(this.src, '_blank')" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" title="Klik untuk memperbesar" /><br><a href="data:image/{ext};base64,{img_b64}" download="{filename}" style="display: inline-block; margin-top: 8px; padding: 6px 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 8px; font-size: 0.85em; font-weight: 500; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); transition: all 0.2s ease;">📥 Download</a></div>'''
                             except Exception as e:
                                 content_html += f"<span style='color:#999;'>⚠ Error loading image</span>"
                         else:
@@ -1676,11 +2105,13 @@ def show_project_details(project_id):
                     
                     st.markdown(
                         f"""
-                        <div style="display: flex; justify-content: {align};">
-                            <div style="background-color: {bg_color}; padding: 10px; border-radius: 10px; margin-bottom: 5px; max-width: 80%; color: {text_color};">
+                        <div style="display: flex; justify-content: {align}; margin-bottom: 10px;">
+                            <div style="background-color: {bg_color}; padding: 12px 15px; border-radius: 15px; 
+                                max-width: 80%; color: {text_color}; box-shadow: {shadow}; 
+                                border-left: 4px solid {border_color};">
                                 {msg_html}
                                 <div style='margin:2px 0 0 0; word-break: break-word;'>{content_html}</div>
-                                <small style="display: block; text-align: right; color: #888; font-size: 0.7em;">{msg['timestamp']}</small>
+                                <small style="display: block; text-align: right; color: #888; font-size: 0.7em; margin-top: 5px;">{msg['timestamp']}</small>
                             </div>
                         </div>
                         """,
@@ -1899,16 +2330,38 @@ def show_direct_chat_page():
             with chat_container:
                 messages = get_direct_messages(st.session_state.current_user['id'], receiver_id)
                 for msg in messages:
-                    sender = get_user(msg['sender_id'])['fullname']
+                    sender_user = get_user(msg['sender_id'])
+                    sender = sender_user['fullname']
+                    sender_role = sender_user['role']
                     is_me = msg['sender_id'] == st.session_state.current_user['id']
 
-                    align = 'flex-end' if is_me else 'flex-start'
-                    bg_color = '#dcf8c6' if is_me else '#e5e5ea'
+                    # Warna berdasarkan role untuk pesan orang lain
+                    role_colors = {
+                        'Admin': {'bg': '#FFE5E5', 'border': '#FF6B6B', 'name': '#C92A2A'},
+                        'Manager': {'bg': '#E3F2FD', 'border': '#2196F3', 'name': '#0D47A1'},
+                        'Supervisor': {'bg': '#FFF3E0', 'border': '#FF9800', 'name': '#E65100'},
+                        'Staff': {'bg': '#F3E5F5', 'border': '#9C27B0', 'name': '#4A148C'}
+                    }
+                    
+                    if is_me:
+                        align = 'flex-end'
+                        bg_color = '#DCF8C6'
+                        border_color = '#4CAF50'
+                        name_color = '#2E7D32'
+                        shadow = '2px 2px 5px rgba(0,0,0,0.15)'
+                    else:
+                        align = 'flex-start'
+                        role_style = role_colors.get(sender_role, role_colors['Staff'])
+                        bg_color = role_style['bg']
+                        border_color = role_style['border']
+                        name_color = role_style['name']
+                        shadow = '2px 2px 5px rgba(0,0,0,0.1)'
+                    
                     text_color = 'black'
 
                     # Parse & render content
                     the_msg = msg['message']
-                    msg_html = f"<strong>{sender}</strong><br>"
+                    msg_html = f"<strong style='color: {name_color};'>{sender}</strong> <span style='font-size: 0.75em; color: #666;'>({sender_role})</span><br>"
                     content_html = ""
                     
                     if '[IMAGE]' in the_msg:
@@ -1922,7 +2375,8 @@ def show_direct_chat_page():
                                     import base64
                                     img_b64 = base64.b64encode(img_f.read()).decode('utf-8')
                                 ext = os.path.splitext(image_path)[-1][1:] or 'png'
-                                content_html += f'<img src="data:image/{ext};base64,{img_b64}" width="200" style="margin:4px 0; border-radius:8px;" />'
+                                filename = os.path.basename(image_path)
+                                content_html += f'''<div style="margin: 8px 0;"><img src="data:image/{ext};base64,{img_b64}" style="max-width: 300px; max-height: 300px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; transition: transform 0.2s ease;" onclick="window.open(this.src, '_blank')" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" title="Klik untuk memperbesar" /><br><a href="data:image/{ext};base64,{img_b64}" download="{filename}" style="display: inline-block; margin-top: 8px; padding: 6px 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 8px; font-size: 0.85em; font-weight: 500; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); transition: all 0.2s ease;">📥 Download</a></div>'''
                             except Exception as e:
                                 content_html += f"<span style='color:#999;'>⚠ Error loading image</span>"
                         else:
@@ -1969,11 +2423,13 @@ def show_direct_chat_page():
                         
                     st.markdown(
                         f"""
-                        <div style="display: flex; justify-content: {align};">
-                            <div style="background-color: {bg_color}; padding: 10px; border-radius: 10px; margin-bottom: 5px; max-width: 80%; color: {text_color};">
+                        <div style="display: flex; justify-content: {align}; margin-bottom: 10px;">
+                            <div style="background-color: {bg_color}; padding: 12px 15px; border-radius: 15px; 
+                                max-width: 80%; color: {text_color}; box-shadow: {shadow}; 
+                                border-left: 4px solid {border_color};">
                                 {msg_html}
                                 <div style='margin:2px 0 0 0; word-break: break-word;'>{content_html}</div>
-                                <small style='display: block; text-align: right; color: #888; font-size: 0.7em;'>{msg['timestamp']}</small>
+                                <small style='display: block; text-align: right; color: #888; font-size: 0.7em; margin-top: 5px;'>{msg['timestamp']}</small>
                             </div>
                         </div>
                         """,
@@ -2133,7 +2589,7 @@ st.markdown("""
         }
     </style>
     <div class="footer">
-        <p>Credit to <b>Galih Primananda</b> | Process Engineer | Software Engineer | System Development | BNSP Certified Data Scientist</p>
+        <p>Credit to <b>Galih Primananda</b></p>
         <p>
             <a href="https://instagram.com/glh_prima/" target="_blank">Instagram</a> |
             <a href="https://linkedin.com/in/galihprime/" target="_blank">LinkedIn</a> |
